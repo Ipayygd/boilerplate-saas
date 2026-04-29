@@ -9,8 +9,8 @@ Stack: **Next.js 16** · **TypeScript** · **Tailwind CSS v4** · **shadcn/ui** 
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/username/repo my-app
-cd my-app
+git clone https://github.com/Ipayygd/boilerplate-saas.git www
+cd www
 npm install
 cp .env.example .env.local
 ```

@@ -4,8 +4,8 @@ export const APP_URL =
 
 export const ROUTES = {
   HOME: "/",
-  LOGIN: "/auth/login",
-  REGISTER: "/auth/register",
+  LOGIN: "/login",
+  REGISTER: "/register",
   DASHBOARD: "/dashboard",
   PAYMENT: "/payment",
   PAYMENT_SUCCESS: "/payment/success",
@@ -13,4 +13,4 @@ export const ROUTES = {
 } as const;
 
 export const PROTECTED_ROUTES = ["/dashboard", "/payment"];
-export const AUTH_ROUTES = ["/auth/login", "/auth/register"];
+export const AUTH_ROUTES = ["/login", "/register"];
