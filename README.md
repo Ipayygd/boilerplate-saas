@@ -25,7 +25,7 @@ cp .env.example .env.local
 **Ambil kredensial:**
 1. Buka **Project Settings → API**
 2. Salin **Project URL** → isi ke `NEXT_PUBLIC_SUPABASE_URL`
-3. Salin **anon / public** key → isi ke `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Salin **Publiashble key / public** key → isi ke `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 **Jalankan migration:**
 1. Buka **SQL Editor → New Query**
@@ -33,7 +33,7 @@ cp .env.example .env.local
 3. Pastikan tidak ada error — tabel `payments` akan terbuat otomatis
 
 **Konfigurasi auth (opsional):**
-- Untuk development, matikan konfirmasi email supaya bisa langsung login tanpa verifikasi: **Authentication → Email → nonaktifkan Confirm email**
+- Untuk development, matikan konfirmasi email supaya bisa langsung login tanpa verifikasi: **Authentication → Sign In / Providers → nonaktifkan Confirm email**
 
 ---
 
@@ -47,8 +47,8 @@ cp .env.example .env.local
 
 **Setup webhook:**
 1. Buka **Settings → Webhooks**
-2. Di bagian **Webhook Token**, isi dengan string bebas (contoh: `rahasia-webhook-123`) → ini yang akan jadi `XENDIT_WEBHOOK_TOKEN`
-3. Di bagian URL, tambahkan endpoint webhook:
+2. Di bagian **Webhook Token**, dapatkan Token verifikasi webhook → ini yang akan jadi `XENDIT_WEBHOOK_TOKEN`
+3. Di bagian URL Webhook, tambahkan endpoint webhook pada group Invoices:
    - **Lokal:** Pakai [ngrok](https://ngrok.com) untuk expose localhost
      ```bash
      ngrok http 3000
@@ -73,6 +73,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Supabase → Project Settings → API
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=e
 
 # Xendit → Settings → API Keys
 XENDIT_SECRET_KEY=xnd_development_...
@@ -147,7 +148,7 @@ npx shadcn@latest add input
 
 1. User daftar/login via `/login` atau `/register`
 2. Session disimpan di cookies oleh Supabase
-3. `middleware.ts` memproteksi semua route di `PROTECTED_ROUTES`
+3. `proxy.ts` memproteksi semua route di `PROTECTED_ROUTES`
 
 ### Payment Flow
 

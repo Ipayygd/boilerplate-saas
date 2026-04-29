@@ -35,14 +35,19 @@ export async function signInWithEmail(email: string, password: string) {
 export async function signUpWithEmail(
   email: string,
   password: string,
-  fullName: string
+  username: string,
 ) {
   const supabase = await createClient();
+
+  if (!email || !password || !username) {
+    return { error: "Semua field wajib diisi." };
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: fullName },
+      data: { username: username }, // raw user metadata
     },
   });
 

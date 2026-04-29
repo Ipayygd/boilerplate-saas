@@ -1,10 +1,11 @@
 export const APP_NAME = "My App";
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+export const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export const ROUTES = {
   HOME: "/",
-  LOGIN: "/login",
-  REGISTER: "/register",
+  LOGIN: "/auth/login",
+  REGISTER: "/auth/register",
   DASHBOARD: "/dashboard",
   PAYMENT: "/payment",
   PAYMENT_SUCCESS: "/payment/success",
@@ -12,4 +13,4 @@ export const ROUTES = {
 } as const;
 
 export const PROTECTED_ROUTES = ["/dashboard", "/payment"];
-export const AUTH_ROUTES = ["/login", "/register"];
+export const AUTH_ROUTES = ["/auth/login", "/auth/register"];

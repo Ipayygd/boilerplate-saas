@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { verifyWebhookToken } from "@/lib/xendit";
+import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
   // Verifikasi webhook token dari header Xendit
@@ -17,12 +17,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
 
   const { error } = await supabase
     .from("payments")
     .update({
-      status: status === "PAID" ? "PAID" : status === "EXPIRED" ? "EXPIRED" : "FAILED",
+      status:
+        status === "PAID"
+          ? "PAID"
+          : status === "EXPIRED"
+            ? "EXPIRED"
+            : "FAILED",
       updated_at: new Date().toISOString(),
     })
     .eq("external_id", external_id);
