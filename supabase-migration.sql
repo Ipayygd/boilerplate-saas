@@ -1,5 +1,5 @@
 -- =============================================
--- Supabase Schema
+-- Supabase Schema — bayar.gg Edition
 -- Jalankan di Supabase → SQL Editor
 -- =============================================
 
@@ -7,12 +7,14 @@
 create table public.payments (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
-  external_id text unique not null,
+  bayargg_invoice_id text unique not null,
   amount bigint not null,
+  final_amount bigint,
+  unique_code int,
   description text not null,
+  payment_method text check (payment_method in ('qris', 'qris_user', 'gopay_qris', 'ovo')) default 'qris',
   status text check (status in ('PENDING', 'PAID', 'EXPIRED', 'FAILED')) default 'PENDING',
-  invoice_url text,
-  xendit_invoice_id text,
+  payment_url text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

@@ -10,12 +10,14 @@ export interface User {
 export interface Payment {
   id: string;
   user_id: string;
-  external_id: string;
+  bayargg_invoice_id: string;
   amount: number;
+  final_amount?: number;
+  unique_code?: number;
   description: string;
+  payment_method: "qris" | "qris_user" | "gopay_qris" | "ovo";
   status: "PENDING" | "PAID" | "EXPIRED" | "FAILED";
-  invoice_url?: string;
-  xendit_invoice_id?: string;
+  payment_url?: string;
   created_at: string;
   updated_at: string;
 }

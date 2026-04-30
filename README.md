@@ -1,194 +1,208 @@
-# Next.js Boilerplate
+# SaaS Boilerplate — bayar.gg Edition
 
-Stack: **Next.js 16** · **TypeScript** · **Tailwind CSS v4** · **shadcn/ui** · **Supabase** · **Xendit**
+Next.js 16 + Supabase + bayar.gg Payment Gateway
+
+Boilerplate ini dirancang untuk mempercepat pengembangan aplikasi berbasis langganan (SaaS), toko digital, atau sistem donasi dengan integrasi pembayaran lokal Indonesia menggunakan [bayar.gg](https://bayar.gg).
+
+## 🚀 Fitur Utama
+
+- **Auth & Database**: Terintegrasi penuh dengan Supabase (Login/Register/Session Management).
+- **Payment Gateway**: Integrasi siap pakai dengan bayar.gg (QRIS, GoPay, OVO, Transfer Bank).
+- **Webhook Handler**: Endpoint otomatis untuk update status pembayaran (`PENDING` → `PAID`) di database.
+- **Developer-Friendly Demo**: Halaman pembayaran contoh yang minimalis untuk mendemonstrasikan cara memanggil Server Action.
+- **Type Safety**: Full TypeScript support.
+
+## 🛠 Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Tailwind CSS v4
+- **Backend**: Supabase (Auth & PostgreSQL)
+- **Payment**: [bayar.gg](https://bayar.gg)
 
 ---
 
-## Setup
+## 📦 Instalasi & Setup
 
-### 1. Clone & Install
+### 1. Clone & Install Dependencies
 
 ```bash
-git clone https://github.com/Ipayygd/boilerplate-saas.git www
-cd www
+git clone <repository-url>
+cd <project-name>
 npm install
+```
+
+### 2. Environment Variables
+
+Salin file contoh environment:
+
+```bash
 cp .env.example .env.local
 ```
 
-### 2. Supabase
+Isi variabel berikut di `.env.local`:
 
-**Buat project:**
-1. Buka [supabase.com](https://supabase.com) → **New Project**
-2. Isi nama project, password database, pilih region **Southeast Asia (Singapore)**
-3. Tunggu project selesai dibuat (~1-2 menit)
+| Variable                        | Deskripsi                           | Cara Mendapatkan                                    |
+| :------------------------------ | :---------------------------------- | :-------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | URL Project Supabase                | Supabase Dashboard → Project Settings → API         |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Key Supabase                 | Supabase Dashboard → Project Settings → API         |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Service Role Key (Server-side only) | Supabase Dashboard → Project Settings → API         |
+| `BAYARGG_API_KEY`               | API Key Pembayaran                  | [bayar.gg](https://bayar.gg) → Pengaturan → API Key |
+| `BAYARGG_WEBHOOK_SECRET`        | Secret untuk verifikasi webhook     | [bayar.gg](https://bayar.gg) → Pengaturan → Webhook |
+| `NEXT_PUBLIC_APP_URL`           | URL Aplikasi Anda                   | `http://localhost:3000` (dev) atau domain produksi  |
 
-**Ambil kredensial:**
-1. Buka **Project Settings → API**
-2. Salin **Project URL** → isi ke `NEXT_PUBLIC_SUPABASE_URL`
-3. Salin **Publiashble key / public** key → isi ke `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+### 3. Setup Database
 
-**Jalankan migration:**
-1. Buka **SQL Editor → New Query**
-2. Copy seluruh isi file `supabase-migration.sql`, paste, lalu klik **Run**
-3. Pastikan tidak ada error — tabel `payments` akan terbuat otomatis
+Jalankan script SQL berikut di **Supabase SQL Editor**.
 
-**Konfigurasi auth (opsional):**
-- Untuk development, matikan konfirmasi email supaya bisa langsung login tanpa verifikasi: **Authentication → Sign In / Providers → nonaktifkan Confirm email**
+📄 [**`supabase-migration.sql`**](./supabase-migration.sql)
 
----
+Atau copy-paste kode di bawah ini jika ingin manual:
 
-### 3. Xendit
+<details>
+<summary>Lihat Kode SQL</summary>
 
-**Ambil API key:**
-1. Buka [dashboard.xendit.co](https://dashboard.xendit.co) → **Settings → API Keys**
-2. Klik **Generate secret key**, beri nama, lalu salin key-nya
-3. Gunakan key dengan prefix `xnd_development_` selama development — jangan pakai production key
-4. Isi ke `XENDIT_SECRET_KEY`
+```sql
+-- =============================================
+-- Supabase Schema — bayar.gg Edition
+-- Jalankan di Supabase → SQL Editor
+-- =============================================
 
-**Setup webhook:**
-1. Buka **Settings → Webhooks**
-2. Di bagian **Webhook Token**, dapatkan Token verifikasi webhook → ini yang akan jadi `XENDIT_WEBHOOK_TOKEN`
-3. Di bagian URL Webhook, tambahkan endpoint webhook pada group Invoices:
-   - **Lokal:** Pakai [ngrok](https://ngrok.com) untuk expose localhost
-     ```bash
-     ngrok http 3000
-     # Contoh output: https://abc123.ngrok.io
-     ```
-     Isi URL: `https://abc123.ngrok.io/api/xendit/webhook`
-   - **Production:** `https://domain-kamu.com/api/xendit/webhook`
-4. Centang event yang perlu didengarkan:
-   - ✅ **Invoice** → `invoice.paid`
-   - ✅ **Invoice** → `invoice.expired`
-5. Klik **Save**
+-- Tabel payments
+create table public.payments (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  bayargg_invoice_id text unique not null,
+  amount bigint not null,
+  final_amount bigint,
+  unique_code int,
+  description text not null,
+  payment_method text check (payment_method in ('qris', 'qris_user', 'gopay_qris', 'ovo')) default 'qris',
+  status text check (status in ('PENDING', 'PAID', 'EXPIRED', 'FAILED')) default 'PENDING',
+  payment_url text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
 
----
+-- RLS: user hanya bisa lihat payment milik sendiri
+alter table public.payments enable row level security;
 
-### 4. Environment
+create policy "Users can view own payments"
+  on public.payments for select
+  using (auth.uid() = user_id);
 
-Isi `.env.local` dengan semua nilai yang sudah dikumpulkan:
+create policy "Users can insert own payments"
+  on public.payments for insert
+  with check (auth.uid() = user_id);
 
-```env
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+-- Update updated_at otomatis
+create or replace function public.handle_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
 
-# Supabase → Project Settings → API
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=e
-
-# Xendit → Settings → API Keys
-XENDIT_SECRET_KEY=xnd_development_...
-
-# Xendit → Settings → Webhooks → Webhook Token (harus sama persis)
-XENDIT_WEBHOOK_TOKEN=rahasia-webhook-123
+create trigger payments_updated_at
+  before update on public.payments
+  for each row execute procedure public.handle_updated_at();
 ```
+</details>
 
----
+### 4. Setup Webhook di bayar.gg
 
-### 5. Jalankan
+Agar status pembayaran otomatis berubah menjadi `PAID` di database Anda:
+
+1. Buka Dashboard [bayar.gg](https://bayar.gg).
+2. Masuk ke menu **Pengaturan** → **Webhook**.
+3. Set **Callback URL** ke: `https://your-domain.com/api/bayargg/webhook`
+   - _Untuk local development, gunakan tools seperti [ngrok](https://ngrok.com) untuk expose localhost._
+4. Copy **Webhook Secret Key** dan paste ke variabel `BAYARGG_WEBHOOK_SECRET` di `.env.local`.
+
+### 5. Jalankan Development Server
 
 ```bash
 npm run dev
 ```
 
-Buka [http://localhost:3000](http://localhost:3000) — aplikasi siap dipakai.
+Buka [http://localhost:3000](http://localhost:3000) di browser.
 
 ---
 
-## Panduan
+## 💳 Panduan Integrasi Pembayaran
 
-### Struktur Folder
+Halaman `/payment` di boilerplate ini berisi **contoh implementasi minimal**. Fokus utamanya adalah menunjukkan bagaimana mengirim data dari Frontend ke Server Action.
 
-```
-app/
-├── (auth)/
-│   ├── login/page.tsx
-│   └── register/page.tsx
-├── (protected)/
-│   └── dashboard/page.tsx
-├── (public)/
-│   └── page.tsx
-├── api/xendit/webhook/route.ts
-└── layout.tsx
+### Cara Menggunakan di Project Anda
 
-components/
-├── ui/           # shadcn/ui — jangan edit manual
-├── shared/       # komponen reusable buatan sendiri
-├── layouts/      # DashboardLayout, AuthLayout, dll
-└── forms/        # LoginForm, RegisterForm, dll
+1. **Siapkan Data Produk:**
+   Di komponen React Anda, tentukan `amount` (harga) dan `description` (nama produk) yang ingin dijual. Data ini biasanya diambil dari database atau props.
 
-actions/          # Server Actions (mutasi data)
-services/         # Fungsi read data dari Supabase
-hooks/            # Custom React hooks
-lib/              # Supabase & Xendit client
-types/            # TypeScript types
-utils/            # Helper: cn(), formatIDR(), slugify()
-constants/        # Routes dan config
-```
+2. **Panggil Server Action:**
+   Gunakan fungsi `createPayment` dari `@/actions/payment`.
 
-### Tambah Halaman Protected
+   ```typescript
+   // Contoh di dalam komponen React
+   async function handleBuy() {
+     const result = await createPayment({
+       amount: 100000,              // Harga dalam Rupiah
+       description: "Beli Produk A", // Deskripsi transaksi
+       paymentMethod: "qris",       // Metode pembayaran
+       // customerPhone: "0812..."  // Opsional
+     });
 
-```bash
-touch "app/(protected)/nama-halaman/page.tsx"
-```
+     if (result.data) {
+       window.location.href = result.data.payment_url; // Redirect ke halaman bayar
+     }
+   }
+   ```
 
-Tambahkan route ke `constants/index.ts`:
+3. **Validasi di Backend (Opsional tapi Disarankan):**
+   Untuk keamanan ekstra, validasi harga di dalam `actions/payment.ts` sebelum memanggil API bayar.gg, terutama jika harga berasal dari input user.
 
-```ts
-export const PROTECTED_ROUTES = ["/dashboard", "/nama-halaman"];
-```
+### Alur Teknis (Flow)
 
-### Tambah Komponen shadcn
-
-```bash
-npx shadcn@latest add button
-npx shadcn@latest add input
-```
-
-### Auth Flow
-
-1. User daftar/login via `/login` atau `/register`
-2. Session disimpan di cookies oleh Supabase
-3. `proxy.ts` memproteksi semua route di `PROTECTED_ROUTES`
-
-### Payment Flow
-
-1. Panggil `createPayment()` dari `actions/payment.ts`
-2. User diarahkan ke `invoice_url` Xendit
-3. Xendit kirim webhook → status di tabel `payments` diupdate otomatis
-
-### Deploy (Vercel)
-
-1. Push ke GitHub → import di [vercel.com](https://vercel.com)
-2. Tambahkan semua env variable di Vercel dashboard
-3. Ganti `NEXT_PUBLIC_APP_URL` ke domain production
-4. Ganti `XENDIT_SECRET_KEY` ke production key
-5. Update webhook URL di dashboard Xendit
+1. **Initiate**: User klik "Bayar" → Frontend memanggil Server Action `createPayment`.
+2. **Create Invoice**: Server Action memanggil API bayar.gg via `lib/bayargg.ts`.
+3. **Save DB**: Server menyimpan data invoice dengan status `PENDING` ke Supabase.
+4. **Redirect**: User diarahkan ke `payment_url` (halaman bayar.gg).
+5. **Payment**: User menyelesaikan pembayaran di pihak ketiga.
+6. **Webhook**: bayar.gg mengirim POST request ke `/api/bayargg/webhook`.
+7. **Verify & Update**: 
+   - Server memverifikasi signature HMAC SHA256.
+   - Jika valid, status di database diubah menjadi `PAID`.
+8. **Success**: User kembali ke aplikasi dan melihat status sukses.
 
 ---
 
-## Contoh: Payment Flow
-
-File yang terlibat:
+## 📂 Struktur File Penting
 
 ```
-app/
-├── (protected)/payment/page.tsx       # Form input pembayaran
-├── (public)/payment/success/page.tsx  # Halaman sukses
-└── (public)/payment/failed/page.tsx   # Halaman gagal
-actions/
-└── payment.ts                         # createPayment(), getPaymentByExternalId()
-lib/xendit/index.ts                    # createInvoice(), verifyWebhookToken()
-app/api/xendit/webhook/route.ts        # Terima callback dari Xendit
+├── actions/
+│   ├── auth.ts            # Login, Register, Get User
+│   └── payment.ts         # Create Payment & Save to DB (Lihat JSDoc di sini)
+├── app/
+│   ├── api/
+│   │   └── bayargg/
+│   │       └── webhook/   # Endpoint menerima callback dari bayar.gg
+│   ├── (auth)/            # Halaman Login & Register
+│   ├── (protected)/
+│   │   └── payment/       # Halaman Contoh Implementasi
+│   └── layout.tsx
+├── lib/
+│   ├── bayargg/
+│   │   └── index.ts       # Helper function API bayar.gg
+│   └── supabase/          # Supabase Client Config
+└── types/                 # TypeScript Definitions
 ```
 
-**Alur lengkap:**
+## 🛠 Troubleshooting
 
-1. User mengisi form di `/payment` → `createPayment()` dipanggil
-2. Invoice dibuat di Xendit, record `PENDING` disimpan ke tabel `payments`
-3. User diarahkan ke `invoice_url` (halaman pembayaran Xendit)
-4. User menyelesaikan pembayaran
-5. Xendit mengirim webhook ke `/api/xendit/webhook` → status diupdate ke `PAID` / `EXPIRED`
-6. Xendit redirect user ke `/payment/success?external_id=inv_xxx` atau `/payment/failed?external_id=inv_xxx`
-7. Halaman success/failed menampilkan detail transaksi berdasarkan `external_id`
+- **Error `Unauthorized`**: Pastikan user sudah login. Halaman payment dilindungi middleware auth.
+- **Webhook tidak masuk**: Pastikan URL webhook di dashboard bayar.gg sudah benar dan dapat diakses publik (gunakan ngrok jika testing di localhost).
+- **Invalid Signature**: Cek apakah `BAYARGG_WEBHOOK_SECRET` di `.env.local` sama persis dengan di dashboard.
+- **Data tidak masuk DB**: Cek console server untuk error Supabase. Pastikan RLS policy sudah benar.
 
-> **Catatan:** Status di halaman success/failed diambil dari database, bukan dari query param — jadi tidak bisa dimanipulasi dari URL.
+## 📄 License
+
+MIT License - feel free to use this boilerplate for your personal or commercial projects.

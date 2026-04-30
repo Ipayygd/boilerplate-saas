@@ -1,23 +1,33 @@
 import Link from "next/link";
-import { getPaymentByExternalId } from "@/actions/payment";
+import { getPaymentByInvoiceId } from "@/actions/payment";
 import { formatIDR } from "@/utils";
 import { ROUTES } from "@/constants";
 
 interface Props {
-  searchParams: Promise<{ external_id?: string }>;
+  searchParams: Promise<{ invoice?: string }>;
 }
 
 export default async function PaymentFailedPage({ searchParams }: Props) {
-  const { external_id } = await searchParams;
-  const payment = external_id ? await getPaymentByExternalId(external_id) : null;
+  const { invoice } = await searchParams;
+  const payment = invoice ? await getPaymentByInvoiceId(invoice) : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center p-8 border rounded-xl bg-white shadow-sm">
         {/* Icon */}
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-8 h-8 text-red-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </div>
 
@@ -38,12 +48,20 @@ export default async function PaymentFailedPage({ searchParams }: Props) {
               <span className="font-medium">{formatIDR(payment.amount)}</span>
             </div>
             <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Metode</span>
+              <span className="font-medium uppercase">
+                {payment.payment_method?.replace("_", " ")}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
               <span className="text-gray-500">Status</span>
               <span className="text-red-500 font-medium">{payment.status}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">ID Transaksi</span>
-              <span className="font-mono text-xs text-gray-400">{payment.external_id}</span>
+              <span className="text-gray-500">Invoice</span>
+              <span className="font-mono text-xs text-gray-400">
+                {payment.bayargg_invoice_id}
+              </span>
             </div>
           </div>
         )}

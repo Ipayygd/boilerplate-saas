@@ -3,85 +3,92 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPayment } from "@/actions/payment";
+import type { PaymentMethod } from "@/lib/bayargg";
+import { formatIDR } from "@/utils";
 
-export default function PaymentPage() {
+export default function PaymentExamplePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  // CONTOH DATA PRODUK (Biasanya ini dari Props/Database)
+  const PRODUCT = {
+    id: "prod_123",
+    name: "Undangan Digital Premium",
+    price: 1000, // Dalam Rupiah
+  };
+
+  async function handleSubmit() {
     setLoading(true);
     setError(null);
 
-    const formData = new FormData(e.currentTarget);
-    const amount = Number(formData.get("amount"));
-    const description = formData.get("description") as string;
+    try {
+      // --- BAGIAN PENTING UNTUK DEVELOPER ---
+      // Ini adalah parameter WAJIB yang harus dikirim ke Server Action
 
-    const result = await createPayment({ amount, description });
+      const payload = {
+        amount: PRODUCT.price, // 1. Nominal (Integer, bukan string)
+        description: `Pembelian ${PRODUCT.name}`, // 2. Deskripsi transaksi
+        paymentMethod: "qris" as PaymentMethod, // 3. Metode bayar (qris/ovo/dll)
+        // customerPhone: "08123456789", // 4. Opsional: No HP user (untuk info WA)
+      };
 
-    if (!result.data) {
-      setError(result.error);
+      // Panggil Server Action
+      const result = await createPayment(payload);
+
+      if (!result.data) {
+        throw new Error(result.error || "Gagal membuat invoice");
+      }
+
+      // Redirect ke halaman pembayaran Bayar.gg
+      console.log("✅ Redirect ke:", result.data.payment_url);
+      router.push(result.data.payment_url);
+    } catch (err) {
+      console.error("❌ Error:", err);
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push(result.data.invoice_url);
   }
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded-xl bg-white shadow-sm">
-      <h1 className="text-xl font-semibold mb-1">Buat Pembayaran</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Isi detail pembayaran di bawah. Kamu akan diarahkan ke halaman Xendit
-        untuk menyelesaikan transaksi.
-      </p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-sm border">
+        <h1 className="text-xl font-bold mb-4">Contoh Implementasi</h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="description" className="text-sm font-medium">
-            Deskripsi
-          </label>
-          <input
-            id="description"
-            name="description"
-            type="text"
-            required
-            placeholder="Contoh: Pembelian Produk A"
-            className="border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-          />
-        </div>
+        <div className="bg-gray-100 p-4 rounded mb-6 text-sm space-y-2">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Produk:</span>
+            <span className="font-medium">{PRODUCT.name}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Harga:</span>
+            <span className="font-bold text-black">
+              {formatIDR(PRODUCT.price)}
+            </span>
+          </div>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="amount" className="text-sm font-medium">
-            Jumlah (Rp)
-          </label>
-          <input
-            id="amount"
-            name="amount"
-            type="number"
-            required
-            min={10000}
-            placeholder="50000"
-            className="border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-          />
-          <p className="text-xs text-gray-400">Minimum Rp10.000</p>
+          {/* Teks Petunjuk Developer */}
+          <p className="text-xs text-blue-600 pt-2 border-t border-gray-200 mt-2 italic">
+            💡 Tip: Buka <strong>Console Browser</strong> (F12) untuk melihat
+            struktur data yang dikirim ke Server Action.
+          </p>
         </div>
 
         {error && (
-          <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-md">
+          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded border border-red-100">
             {error}
-          </p>
+          </div>
         )}
 
         <button
-          type="submit"
+          onClick={handleSubmit}
           disabled={loading}
-          className="bg-black text-white rounded-md py-2 text-sm font-medium hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+          className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50 transition-all"
         >
-          {loading ? "Memproses..." : "Bayar Sekarang"}
+          {loading ? "Memproses..." : "Bayar Sekarang (Demo)"}
         </button>
-      </form>
+      </div>
     </div>
   );
 }

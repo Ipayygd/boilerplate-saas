@@ -1,61 +1,110 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createInvoice } from "@/lib/xendit";
-import { generateId } from "@/utils";
+import {
+  createPayment as bayarGGCreatePayment,
+  checkPayment,
+} from "@/lib/bayargg";
+import type { PaymentMethod } from "@/lib/bayargg";
 import { getUser } from "./auth";
+
+export { checkPayment };
 
 interface CreatePaymentParams {
   amount: number;
   description: string;
+  paymentMethod?: PaymentMethod;
+  customerPhone?: string;
 }
 
 type CreatePaymentResult =
-  | { data: { invoice_url: string; id: string }; error: null }
+  | { data: { payment_url: string; invoice_id: string }; error: null }
   | { data: null; error: string };
 
-export async function createPayment({ amount, description }: CreatePaymentParams): Promise<CreatePaymentResult> {
+/**
+ * Membuat invoice pembayaran via bayar.gg dan menyimpannya ke database.
+ *
+ * @param params - Objek parameter pembayaran
+ * @param params.amount - Nominal dalam Rupiah (contoh: 100000)
+ * @param params.description - Deskripsi item yang dibeli
+ * @param params.paymentMethod - Metode pembayaran ('qris', 'ovo', dll). Default: 'qris'
+ * @param params.customerPhone - (Opsional) Nomor HP pelanggan untuk info WA
+ *
+ * @returns Object berisi payment_url dan invoice_id jika sukses, atau error jika gagal.
+ */
+export async function createPayment({
+  amount,
+  description,
+  paymentMethod = "qris",
+  customerPhone,
+}: CreatePaymentParams): Promise<CreatePaymentResult> {
   const user = await getUser();
   if (!user) return { data: null, error: "Unauthorized" };
 
-  const externalId = generateId("inv");
-
   try {
-    const invoice = await createInvoice({
-      externalId,
+    // 1. Panggil Library Bayar.gg
+    const result = await bayarGGCreatePayment({
       amount,
-      payerEmail: user.email!,
       description,
-      successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/success?external_id=${externalId}`,
-      failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/failed?external_id=${externalId}`,
+      customerEmail: user.email!,
+      paymentMethod,
+      customerPhone,
+      callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/bayargg/webhook`,
+      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/success`,
     });
 
+    // 2. Ambil data dari result.data (sesuai struktur API)
+    const paymentData = result.data;
+
+    if (!paymentData || !paymentData.invoice_id) {
+      throw new Error("Data pembayaran tidak valid dari provider");
+    }
+
+    // 3. Simpan ke Database Supabase
     const supabase = await createClient();
+
     const { error: dbError } = await supabase.from("payments").insert({
       user_id: user.id,
-      external_id: externalId,
-      amount,
+      bayargg_invoice_id: paymentData.invoice_id,
+      amount: paymentData.amount,
+      final_amount: paymentData.final_amount,
+      unique_code: paymentData.unique_code,
       description,
+      payment_method: paymentMethod,
       status: "PENDING",
-      invoice_url: invoice.invoice_url,
-      xendit_invoice_id: invoice.id,
+      payment_url: paymentData.payment_url,
     });
 
-    if (dbError) throw new Error(dbError.message);
+    if (dbError) {
+      console.error(
+        "Database Action [createPayment] tabel [payments] tabel Error:",
+        dbError,
+      );
+      throw new Error(dbError.message);
+    }
 
-    return { data: invoice, error: null };
+    // 4. Return data ke frontend untuk redirect
+    return {
+      data: {
+        payment_url: paymentData.payment_url,
+        invoice_id: paymentData.invoice_id,
+      },
+      error: null,
+    };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Gagal membuat pembayaran";
+    console.error("Action Error:", err);
+    const message =
+      err instanceof Error ? err.message : "Gagal membuat pembayaran";
     return { data: null, error: message };
   }
 }
 
-export async function getPaymentByExternalId(externalId: string) {
+export async function getPaymentByInvoiceId(invoiceId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payments")
     .select("*")
-    .eq("external_id", externalId)
+    .eq("bayargg_invoice_id", invoiceId)
     .single();
 
   if (error) return null;
