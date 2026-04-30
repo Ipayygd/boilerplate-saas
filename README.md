@@ -1,4 +1,4 @@
-# SaaS Boilerplate — bayar.gg Edition
+# SaaS Boilerplate
 
 Next.js 16 + Supabase + bayar.gg Payment Gateway
 
@@ -26,8 +26,8 @@ Boilerplate ini dirancang untuk mempercepat pengembangan aplikasi berbasis langg
 ### 1. Clone & Install Dependencies
 
 ```bash
-git clone <repository-url>
-cd <project-name>
+git clone https://github.com/Ipayygd/boilerplate-saas.git www
+cd www
 npm install
 ```
 
@@ -107,6 +107,7 @@ create trigger payments_updated_at
   before update on public.payments
   for each row execute procedure public.handle_updated_at();
 ```
+
 </details>
 
 ### 4. Setup Webhook di bayar.gg
@@ -145,9 +146,9 @@ Halaman `/payment` di boilerplate ini berisi **contoh implementasi minimal**. Fo
    // Contoh di dalam komponen React
    async function handleBuy() {
      const result = await createPayment({
-       amount: 100000,              // Harga dalam Rupiah
+       amount: 100000, // Harga dalam Rupiah
        description: "Beli Produk A", // Deskripsi transaksi
-       paymentMethod: "qris",       // Metode pembayaran
+       paymentMethod: "qris", // Metode pembayaran
        // customerPhone: "0812..."  // Opsional
      });
 
@@ -168,7 +169,7 @@ Halaman `/payment` di boilerplate ini berisi **contoh implementasi minimal**. Fo
 4. **Redirect**: User diarahkan ke `payment_url` (halaman bayar.gg).
 5. **Payment**: User menyelesaikan pembayaran di pihak ketiga.
 6. **Webhook**: bayar.gg mengirim POST request ke `/api/bayargg/webhook`.
-7. **Verify & Update**: 
+7. **Verify & Update**:
    - Server memverifikasi signature HMAC SHA256.
    - Jika valid, status di database diubah menjadi `PAID`.
 8. **Success**: User kembali ke aplikasi dan melihat status sukses.
@@ -198,7 +199,7 @@ Halaman `/payment` di boilerplate ini berisi **contoh implementasi minimal**. Fo
 
 ## 🛠 Troubleshooting
 
-- **Error `Unauthorized`**: Pastikan user sudah login. Halaman payment dilindungi middleware auth.
+- **Error `Unauthorized`**: Pastikan user sudah login. Halaman payment dilindungi middelware/proxy auth.
 - **Webhook tidak masuk**: Pastikan URL webhook di dashboard bayar.gg sudah benar dan dapat diakses publik (gunakan ngrok jika testing di localhost).
 - **Invalid Signature**: Cek apakah `BAYARGG_WEBHOOK_SECRET` di `.env.local` sama persis dengan di dashboard.
 - **Data tidak masuk DB**: Cek console server untuk error Supabase. Pastikan RLS policy sudah benar.
