@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/actions/auth";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { ROUTES } from "@/constants";
+import { getCurrentUser } from "@/services/user.service";
 
 export default async function DashboardPage() {
-  const user = await getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect(ROUTES.LOGIN);
 

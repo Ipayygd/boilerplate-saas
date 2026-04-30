@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getPaymentByInvoiceId } from "@/actions/payment";
 import { formatIDR } from "@/utils";
 import { ROUTES } from "@/constants";
+import { getPaymentByInvoiceId } from "@/services/payment.service";
 
 interface Props {
   searchParams: Promise<{ invoice?: string }>;

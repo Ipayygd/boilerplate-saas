@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signUpWithEmail } from "@/actions/auth";
+import { signUpWithEmail } from "@/actions/auth.action";
 
 export function RegisterForm() {
   const router = useRouter();

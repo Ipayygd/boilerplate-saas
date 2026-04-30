@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPayment } from "@/actions/payment";
+import { createPayment } from "@/actions/payment.action";
 import type { PaymentMethod } from "@/lib/bayargg";
 import { formatIDR } from "@/utils";
 
@@ -14,8 +14,8 @@ export default function PaymentExamplePage() {
   // CONTOH DATA PRODUK (Biasanya ini dari Props/Database)
   const PRODUCT = {
     id: "prod_123",
-    name: "Undangan Digital Premium",
-    price: 1000, // Dalam Rupiah
+    name: "Product A",
+    price: 1000, // minimal Rp 1.000
   };
 
   async function handleSubmit() {
@@ -23,7 +23,6 @@ export default function PaymentExamplePage() {
     setError(null);
 
     try {
-      // --- BAGIAN PENTING UNTUK DEVELOPER ---
       // Ini adalah parameter WAJIB yang harus dikirim ke Server Action
 
       const payload = {
@@ -41,7 +40,7 @@ export default function PaymentExamplePage() {
       }
 
       // Redirect ke halaman pembayaran Bayar.gg
-      console.log("✅ Redirect ke:", result.data.payment_url);
+      console.log("Redirect to:", result.data.payment_url);
       router.push(result.data.payment_url);
     } catch (err) {
       console.error("❌ Error:", err);
@@ -67,12 +66,6 @@ export default function PaymentExamplePage() {
               {formatIDR(PRODUCT.price)}
             </span>
           </div>
-
-          {/* Teks Petunjuk Developer */}
-          <p className="text-xs text-blue-600 pt-2 border-t border-gray-200 mt-2 italic">
-            💡 Tip: Buka <strong>Console Browser</strong> (F12) untuk melihat
-            struktur data yang dikirim ke Server Action.
-          </p>
         </div>
 
         {error && (
@@ -86,7 +79,7 @@ export default function PaymentExamplePage() {
           disabled={loading}
           className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50 transition-all"
         >
-          {loading ? "Memproses..." : "Bayar Sekarang (Demo)"}
+          {loading ? "Memproses..." : "Bayar Sekarang"}
         </button>
       </div>
     </div>

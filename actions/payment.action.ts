@@ -6,7 +6,7 @@ import {
   checkPayment,
 } from "@/lib/bayargg";
 import type { PaymentMethod } from "@/lib/bayargg";
-import { getUser } from "./auth";
+import { getCurrentUser } from "@/services/user.service";
 
 export { checkPayment };
 
@@ -38,7 +38,7 @@ export async function createPayment({
   paymentMethod = "qris",
   customerPhone,
 }: CreatePaymentParams): Promise<CreatePaymentResult> {
-  const user = await getUser();
+  const user = await getCurrentUser();
   if (!user) return { data: null, error: "Unauthorized" };
 
   try {
@@ -97,16 +97,4 @@ export async function createPayment({
       err instanceof Error ? err.message : "Gagal membuat pembayaran";
     return { data: null, error: message };
   }
-}
-
-export async function getPaymentByInvoiceId(invoiceId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("bayargg_invoice_id", invoiceId)
-    .single();
-
-  if (error) return null;
-  return data;
 }

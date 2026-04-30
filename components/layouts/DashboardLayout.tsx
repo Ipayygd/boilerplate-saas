@@ -1,4 +1,4 @@
-import { signOut } from "@/actions/auth";
+import { signOut } from "@/actions/auth.action";
 import { APP_NAME, ROUTES } from "@/constants";
 import Link from "next/link";
 
